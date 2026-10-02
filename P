@@ -2349,8 +2349,8 @@ UI.controlGui.DisplayOrder = 10
 UI.controlGui.Enabled = false
 UI.controlGui.Parent = Services.Players.LocalPlayer:WaitForChild('PlayerGui')
 UI.mainFrame = Instance.new('Frame')
-UI.mainFrame.Size = UDim2.new(0, 220, 0, 750)
-UI.mainFrame.Position = UDim2.new(0, 10, 0, 10)
+UI.mainFrame.Size = UDim2.new(0, 390, 0, 250)
+UI.mainFrame.Position = UDim2.new(0.5, -195, 0.5, -125)
 UI.mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 UI.mainFrame.BorderSizePixel = 0
 UI.mainFrame.ZIndex = 1
@@ -6580,9 +6580,9 @@ task.spawn(function()
     end
     if UI.tabContainer then UI.tabContainer.Visible = false end
 
-    main.Size = UDim2.fromOffset(280, 300)
-    main.Position = UDim2.new(0.5, -140, 0.5, -150)
-    main.BackgroundColor3 = Color3.fromRGB(25,25,32)
+    main.Size = UDim2.fromOffset(390, 250)
+    main.Position = UDim2.new(0.5, -195, 0.5, -125)
+    main.BackgroundColor3 = Color3.fromRGB(22, 24, 31)
     main.ClipsDescendants = true
     main.Active = true
     gui.DisplayOrder = 9999
@@ -6590,12 +6590,12 @@ task.spawn(function()
 
     if UI.titleLabel then
         UI.titleLabel.Text = "PET SPAWNER"
-        UI.titleLabel.TextSize = 15
+        UI.titleLabel.TextSize = 14
     end
 
-    spawner.Size = UDim2.new(1, -16, 0, 250)
-    spawner.Position = UDim2.fromOffset(8, 38)
-    spawner.CanvasSize = UDim2.new(0, 0, 0, 700)
+    spawner.Size = UDim2.new(1, -16, 0, 204)
+    spawner.Position = UDim2.fromOffset(8, 36)
+    spawner.CanvasSize = UDim2.new(0, 0, 0, 620)
     spawner.ScrollBarThickness = 3
 
     -- Remove Profile Collection from the visible UI.
@@ -6638,5 +6638,122 @@ task.spawn(function()
     -- Keep the actual original Spawn Pet button. No replacement backend is used.
     if spawnButton then
         spawnButton.Visible = true
+    end
+end)
+
+-- SHXDRAG: Compact landscape GUI theme pass
+-- Presentation-only: does not alter the trade/spawner backend.
+task.spawn(function()
+    task.wait(0.15)
+
+    local gui = UI and UI.controlGui
+    local main = UI and UI.mainFrame
+    if not gui or not main then return end
+
+    local THEME = {
+        panel = Color3.fromRGB(22, 24, 31),
+        panel2 = Color3.fromRGB(29, 32, 42),
+        surface = Color3.fromRGB(36, 40, 52),
+        surfaceHover = Color3.fromRGB(45, 50, 64),
+        accent = Color3.fromRGB(95, 145, 255),
+        accentSoft = Color3.fromRGB(70, 105, 185),
+        text = Color3.fromRGB(238, 242, 250),
+        muted = Color3.fromRGB(165, 172, 190),
+        stroke = Color3.fromRGB(72, 80, 105),
+        success = Color3.fromRGB(82, 190, 125),
+        danger = Color3.fromRGB(205, 82, 92),
+    }
+
+    -- Small landscape proportions.
+    main.Size = UDim2.fromOffset(390, 250)
+    main.Position = UDim2.new(0.5, -195, 0.5, -125)
+    main.BackgroundColor3 = THEME.panel
+    main.BorderSizePixel = 0
+    main.ClipsDescendants = true
+    main.Active = true
+
+    if UI.mainCorner then
+        UI.mainCorner.CornerRadius = UDim.new(0, 8)
+    end
+    if UI.mainStroke then
+        UI.mainStroke.Color = THEME.accent
+        UI.mainStroke.Thickness = 1.2
+        UI.mainStroke.Transparency = 0.12
+    end
+
+    if UI.titleLabel then
+        UI.titleLabel.Size = UDim2.new(1, -18, 0, 24)
+        UI.titleLabel.Position = UDim2.new(0, 9, 0, 3)
+        UI.titleLabel.Font = Enum.Font.GothamBold
+        UI.titleLabel.TextSize = 13
+        UI.titleLabel.TextColor3 = THEME.text
+        UI.titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    end
+
+    if UI.dragHandle then
+        UI.dragHandle.Size = UDim2.new(1, 0, 0, 28)
+    end
+
+    if UI.tabContainer and UI.tabContainer.Visible then
+        UI.tabContainer.Size = UDim2.new(1, -16, 0, 24)
+        UI.tabContainer.Position = UDim2.new(0, 8, 0, 29)
+    end
+
+    -- Theme existing GUI descendants without replacing functionality.
+    for _, obj in ipairs(main:GetDescendants()) do
+        pcall(function()
+            if obj:IsA("TextLabel") then
+                obj.TextColor3 = (obj.TextSize <= 10) and THEME.muted or THEME.text
+            elseif obj:IsA("TextBox") then
+                obj.BackgroundColor3 = THEME.surface
+                obj.BackgroundTransparency = 0.05
+                obj.TextColor3 = THEME.text
+                obj.PlaceholderColor3 = THEME.muted
+            elseif obj:IsA("TextButton") then
+                obj.BackgroundColor3 = THEME.surface
+                obj.BackgroundTransparency = 0.05
+                obj.TextColor3 = THEME.text
+            elseif obj:IsA("ScrollingFrame") then
+                obj.ScrollBarThickness = 3
+                obj.ScrollBarImageColor3 = THEME.accentSoft
+                obj.ScrollBarImageTransparency = 0.25
+            elseif obj:IsA("UIStroke") then
+                obj.Color = THEME.stroke
+                obj.Thickness = math.min(obj.Thickness, 1)
+            end
+        end)
+    end
+
+    -- Re-apply key accents after the broad pass.
+    if UI.mainStroke then
+        UI.mainStroke.Color = THEME.accent
+        UI.mainStroke.Thickness = 1.2
+    end
+    if UI.titleStroke then
+        UI.titleStroke.Color = Color3.fromRGB(8, 10, 14)
+        UI.titleStroke.Thickness = 0.6
+    end
+
+    -- Keep the final spawner tab compact and landscape.
+    local spawner = UI.spawnerFrame
+    if spawner then
+        spawner.Size = UDim2.new(1, -16, 0, 204)
+        spawner.Position = UDim2.fromOffset(8, 36)
+        spawner.CanvasSize = UDim2.new(0, 0, 0, 620)
+        spawner.ScrollBarThickness = 3
+
+        for _, obj in ipairs(spawner:GetDescendants()) do
+            pcall(function()
+                if obj:IsA("TextButton") then
+                    obj.TextSize = math.clamp(obj.TextSize, 9, 12)
+                elseif obj:IsA("TextLabel") then
+                    obj.TextSize = math.clamp(obj.TextSize, 9, 12)
+                elseif obj:IsA("TextBox") then
+                    obj.TextSize = math.clamp(obj.TextSize, 9, 12)
+                elseif obj:IsA("UICorner") then
+                    obj.CornerRadius = UDim.new(0, 5)
+                end
+            end)
+        end
     end
 end)
