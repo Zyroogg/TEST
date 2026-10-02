@@ -225,77 +225,28 @@ controls.Parent = UI.main
 corner(controls, 9)
 stroke(controls, COLORS.stroke, 1, 0.3)
 
-label(controls, "FARM CONTROLS", UDim2.new(1, -16, 0, 15), UDim2.fromOffset(8, 6),
-    Enum.Font.GothamBold, 9, COLORS.muted)
+label(controls, "FARM CONTROL", UDim2.new(1, -16, 0, 15), UDim2.fromOffset(8, 7),
+    Enum.Font.GothamBold, 10, COLORS.muted)
 
-UI.start, _ = button(controls, "▶  START FARM", UDim2.fromOffset(91, 30),
-    UDim2.fromOffset(8, 27), COLORS.success)
-UI.stop, _ = button(controls, "■  STOP", UDim2.fromOffset(91, 30),
-    UDim2.fromOffset(106, 27), COLORS.danger)
+UI.start, _ = button(controls, "▶  START FARM", UDim2.fromOffset(125, 34),
+    UDim2.fromOffset(8, 31), COLORS.success)
 
-label(controls, "MODE", UDim2.new(1, -16, 0, 13), UDim2.fromOffset(8, 64),
+UI.stop, _ = button(controls, "■  STOP", UDim2.fromOffset(125, 34),
+    UDim2.fromOffset(147, 31), COLORS.danger)
+
+label(controls, "STATUS", UDim2.new(1, -16, 0, 12), UDim2.fromOffset(8, 72),
     Enum.Font.GothamSemibold, 8, COLORS.muted)
 
-UI.modeEvent, _ = button(controls, "🎃 EVENT", UDim2.fromOffset(58, 28),
-    UDim2.fromOffset(8, 81), COLORS.accent)
-UI.modeTasks, _ = button(controls, "🐾 TASKS", UDim2.fromOffset(58, 28),
-    UDim2.fromOffset(73, 81), COLORS.panel3)
-UI.modeRoute, _ = button(controls, "📍 ROUTE", UDim2.fromOffset(58, 28),
-    UDim2.fromOffset(138, 81), COLORS.panel3)
+UI.status = label(controls, "READY • MANUAL", UDim2.new(1, -16, 0, 20),
+    UDim2.fromOffset(8, 87), Enum.Font.GothamBold, 10, COLORS.accent)
 
-label(controls, "STATUS", UDim2.new(1, -16, 0, 12), UDim2.fromOffset(8, 115),
-    Enum.Font.GothamSemibold, 8, COLORS.muted)
+-- Compact farm-control-only layout
+UI.main.Size = UDim2.fromOffset(300, 178)
 
-UI.status = label(controls, "READY • MANUAL GUI", UDim2.new(1, -16, 0, 20),
-    UDim2.fromOffset(8, 127), Enum.Font.GothamBold, 10, COLORS.accent)
+controls.Size = UDim2.fromOffset(280, 120)
+controls.Position = UDim2.fromOffset(10, 55)
 
--- Right: stats
-local stats = Instance.new("Frame")
-stats.Size = UDim2.fromOffset(115, 152)
-stats.Position = UDim2.fromOffset(225, 55)
-stats.BackgroundColor3 = COLORS.panel
-stats.BorderSizePixel = 0
-stats.Parent = UI.main
-corner(stats, 9)
-stroke(stats, COLORS.stroke, 1, 0.3)
-
-label(stats, "EVENT STATS", UDim2.new(1, -16, 0, 15), UDim2.fromOffset(8, 6),
-    Enum.Font.GothamBold, 9, COLORS.muted)
-
-local function statRow(title, value, y, valueColor)
-    label(stats, title, UDim2.new(0.52, 0, 0, 20), UDim2.fromOffset(8, y),
-        Enum.Font.GothamMedium, 9, COLORS.muted)
-    return label(stats, value, UDim2.new(0.43, 0, 0, 20), UDim2.new(0.57, -8, 0, y),
-        Enum.Font.GothamBold, 10, valueColor or COLORS.text, Enum.TextXAlignment.Right)
-end
-
-UI.candy = statRow("Candy", "0", 28, COLORS.accent)
-UI.runtime = statRow("Runtime", "00:00", 52, COLORS.text)
-UI.rate = statRow("Rate", "0 / hr", 76, COLORS.success)
-UI.target = statRow("Target", "Manual", 100, COLORS.muted)
-
-local footer = label(UI.main,
-    "Halloween GUI • Visual controls only • No automation included",
-    UDim2.new(1, -20, 0, 13),
-    UDim2.fromOffset(10, 199),
-    Enum.Font.GothamMedium, 8, COLORS.muted,
-    Enum.TextXAlignment.Center)
-
--- Simple visual-only state changes
-local currentMode = "EVENT"
-
-local function setMode(mode)
-    currentMode = mode
-    UI.modeEvent.BackgroundColor3 = mode == "EVENT" and COLORS.accent or COLORS.panel3
-    UI.modeTasks.BackgroundColor3 = mode == "TASKS" and COLORS.accent or COLORS.panel3
-    UI.modeRoute.BackgroundColor3 = mode == "ROUTE" and COLORS.accent or COLORS.panel3
-    UI.status.Text = "READY • " .. mode
-end
-
-UI.modeEvent.MouseButton1Click:Connect(function() setMode("EVENT") end)
-UI.modeTasks.MouseButton1Click:Connect(function() setMode("TASKS") end)
-UI.modeRoute.MouseButton1Click:Connect(function() setMode("ROUTE") end)
-
+-- Simple visual-only farm control state
 UI.start.MouseButton1Click:Connect(function()
     UI.status.Text = "READY • START PRESSED"
 end)
