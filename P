@@ -2365,7 +2365,7 @@ UI.titleLabel = Instance.new('TextLabel')
 UI.titleLabel.Size = UDim2.new(1, 0, 0, 22)
 UI.titleLabel.Position = UDim2.new(0, 0, 0, 2)
 UI.titleLabel.BackgroundTransparency = 1
-UI.titleLabel.Text = 'm0_3a On Discord'
+UI.titleLabel.Text = '🐾 ADOPT ME SPAWNER'
 UI.titleLabel.Font = Enum.Font.FredokaOne
 UI.titleLabel.TextSize = 12
 UI.titleLabel.TextColor3 = Color3.fromRGB(240, 240, 255)
@@ -6588,7 +6588,7 @@ task.spawn(function()
     gui.Enabled = true
 
     if UI.titleLabel then
-        UI.titleLabel.Text = "m0_3a On Discord"
+        UI.titleLabel.Text = "🐾 ADOPT ME SPAWNER"
         UI.titleLabel.TextSize = 12
     end
 
