@@ -1,3 +1,4 @@
+
 --[[
     ADOPT ME HALLOWEEN FARM GUI — GUI ONLY
     No farming logic, remotes, teleporting, clicking automation, or backend hooks.
@@ -118,14 +119,6 @@ UI.main.Active = true
 UI.main.Parent = UI.gui
 corner(UI.main, 11)
 stroke(UI.main, COLORS.stroke, 1.25, 0)
-
--- Soft top accent
-local topAccent = Instance.new("Frame")
-topAccent.Size = UDim2.new(1, 0, 0, 3)
-topAccent.BackgroundColor3 = COLORS.accent
-topAccent.BorderSizePixel = 0
-topAccent.Parent = UI.main
-corner(topAccent, 11)
 
 -- Header
 local header = Instance.new("Frame")
