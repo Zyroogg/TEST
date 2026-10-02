@@ -1,4 +1,3 @@
-
 if _G.MockTradeScriptLoaded then
     warn("Mock Trade Script already loaded - skipping duplicate execution")
     return
@@ -1349,10 +1348,7 @@ local function hookTradeFunctions()
             local partnerItems = #mockState.trade.recipient_offer.items
             if myItems > 0 and partnerItems == 0 then
                 mockState.scamWarningShown = true
-                if Apps.DialogApp then
-                    Apps.DialogApp:dialog({ text = 'This trade seems unbalanced. Be careful - you could be getting scammed.', button = 'Next', yields = false })
-                    Apps.DialogApp:dialog({ text = 'Any items lost to scams WILL NOT be returned. Be sure before you accept!', button = 'I understand', yields = false })
-                end
+                -- Popup intentionally suppressed; keep scamWarningShown state without opening DialogApp.
             end
         else
             return mockState.originalFunctions._evaluate_trade_fairness(self)
@@ -2350,8 +2346,8 @@ UI.controlGui.DisplayOrder = 10
 UI.controlGui.Enabled = false
 UI.controlGui.Parent = Services.Players.LocalPlayer:WaitForChild('PlayerGui')
 UI.mainFrame = Instance.new('Frame')
-UI.mainFrame.Size = UDim2.new(0, 390, 0, 250)
-UI.mainFrame.Position = UDim2.new(0.5, -195, 0.5, -125)
+UI.mainFrame.Size = UDim2.fromOffset(360, 240)
+UI.mainFrame.Position = UDim2.new(0.5, -180, 0.5, -120)
 UI.mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 UI.mainFrame.BorderSizePixel = 0
 UI.mainFrame.ZIndex = 1
@@ -2379,7 +2375,7 @@ UI.titleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 UI.titleStroke.Color = Color3.new(0, 0, 0)
 UI.titleStroke.Thickness = 0.8
 UI.titleStroke.Parent = UI.titleLabel
--- drag handle (used by the single robust drag system below)
+-- drag handle (invisible button over title)
 UI.dragHandle = Instance.new('TextButton')
 UI.dragHandle.Size = UDim2.new(1, 0, 0, 26)
 UI.dragHandle.Position = UDim2.new(0, 0, 0, 0)
@@ -2388,6 +2384,33 @@ UI.dragHandle.Text = ''
 UI.dragHandle.AutoButtonColor = false
 UI.dragHandle.ZIndex = 5
 UI.dragHandle.Parent = UI.mainFrame
+do
+    local dragging = false
+    local dragStart, startPos
+    UI.dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = UI.mainFrame.Position
+            local conn
+            conn = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    if conn then conn:Disconnect() end
+                end
+            end)
+        end
+    end)
+    Services.UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            UI.mainFrame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
 UI.tabContainer = Instance.new('Frame')
 UI.tabContainer.Size = UDim2.new(0.94, 0, 0, 26)
 UI.tabContainer.Position = UDim2.new(0.03, 0, 0, 26)
@@ -6037,51 +6060,34 @@ Services.UserInputService.InputBegan:Connect(function(input, gameProcessed)
         end
     end
 end)
--- Robust GUI dragging: title bar only, mouse + touch.
-local DragState = {
-    dragging = false,
-    dragStart = nil,
-    startPos = nil,
-}
-
-local function beginUIDrag(input)
-    if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
-        return
-    end
-    DragState.dragging = true
-    DragState.dragStart = input.Position
-    DragState.startPos = UI.mainFrame.Position
-end
-
-local function endUIDrag(input)
+local DragState = {}
+DragState.dragging = false
+DragState.dragInput, DragState.dragStart, DragState.startPos = nil, nil, nil
+UI.mainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        DragState.dragging = false
+        DragState.dragging = true
+        DragState.dragStart = input.Position
+        DragState.startPos = UI.mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                DragState.dragging = false
+                DragState.dragInput = nil
+            end
+        end)
     end
-end
-
-if UI.dragHandle then
-    UI.dragHandle.InputBegan:Connect(beginUIDrag)
-    UI.dragHandle.InputEnded:Connect(endUIDrag)
-end
-
+end)
+UI.mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        DragState.dragInput = input
+    end
+end)
 Services.UserInputService.InputChanged:Connect(function(input)
-    if not DragState.dragging or not DragState.dragStart or not DragState.startPos then return end
-    if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then
-        return
-    end
-    local delta = input.Position - DragState.dragStart
-    UI.mainFrame.Position = UDim2.new(
-        DragState.startPos.X.Scale, DragState.startPos.X.Offset + delta.X,
-        DragState.startPos.Y.Scale, DragState.startPos.Y.Offset + delta.Y
-    )
-end)
-
-Services.UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        DragState.dragging = false
+    if input == DragState.dragInput and DragState.dragging and DragState.dragStart and DragState.startPos then
+        local delta = input.Position - DragState.dragStart
+        local pos = DragState.startPos
+        UI.mainFrame.Position = UDim2.new(pos.X.Scale, pos.X.Offset + delta.X, pos.Y.Scale, pos.Y.Offset + delta.Y)
     end
 end)
-
 Services.UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F6 then
@@ -6543,227 +6549,93 @@ do
 end
 hookSuggestInventorySystem()
 print("[SuggestInventory] Complete auto-suggest system initialized!")
--- SHXDRAG: Final polished landscape GUI pass
--- Presentation-only: keeps the existing backend/callbacks and does not replace controls.
+-- SHXDRAG: Spawner-only compact UI
+-- Keeps the ORIGINAL Spawner backend and Spawn Pet callback from this script.
 task.spawn(function()
+    local player = Services.Players.LocalPlayer
     local gui = UI and UI.controlGui
     local main = UI and UI.mainFrame
     local spawner = UI and UI.spawnerFrame
-    if not gui or not main then return end
+    if not gui or not main or not spawner then return end
 
-    local THEME = {
-        panel = Color3.fromRGB(18, 20, 27),
-        topbar = Color3.fromRGB(24, 28, 38),
-        surface = Color3.fromRGB(31, 35, 46),
-        surfaceHover = Color3.fromRGB(41, 46, 60),
-        accent = Color3.fromRGB(92, 135, 255),
-        accentSoft = Color3.fromRGB(66, 96, 170),
-        text = Color3.fromRGB(242, 245, 252),
-        muted = Color3.fromRGB(156, 164, 182),
-        stroke = Color3.fromRGB(63, 71, 92),
-        success = Color3.fromRGB(72, 182, 120),
-        danger = Color3.fromRGB(205, 78, 91),
-    }
+    -- Wait for the original Spawner task to finish creating its controls.
+    local spawnButton
+    for _ = 1, 100 do
+        for _, obj in ipairs(spawner:GetDescendants()) do
+            if obj:IsA("TextButton") and obj.Text == "Spawn Pet" then
+                spawnButton = obj
+                break
+            end
+        end
+        if spawnButton then break end
+        task.wait(0.1)
+    end
 
-    -- Wait for the original spawner controls before styling them.
-    if spawner then
-        local spawnButton
-        for _ = 1, 100 do
-            for _, obj in ipairs(spawner:GetDescendants()) do
-                if obj:IsA('TextButton') and obj.Text == 'Spawn Pet' then
-                    spawnButton = obj
+    -- Hide every tab and leave only the real Spawner frame visible.
+    if UIState and UIState.tabFrames then
+        for name, frame in pairs(UIState.tabFrames) do
+            frame.Visible = (name == "Spawner")
+        end
+    end
+    if UI.tabContainer then UI.tabContainer.Visible = false end
+
+    main.Size = UDim2.fromOffset(360, 240)
+    main.Position = UDim2.new(0.5, -180, 0.5, -120)
+    main.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    main.ClipsDescendants = true
+    main.Active = true
+    gui.DisplayOrder = 9999
+    gui.Enabled = true
+
+    if UI.titleLabel then
+        UI.titleLabel.Text = "m0_3a On Discord"
+        UI.titleLabel.TextSize = 12
+    end
+
+    spawner.Size = UDim2.new(1, -16, 0, 194)
+    spawner.Position = UDim2.fromOffset(8, 38)
+    spawner.CanvasSize = UDim2.new(0, 0, 0, 700)
+    spawner.ScrollBarThickness = 3
+
+    -- Remove Profile Collection from the visible UI.
+    for _, obj in ipairs(spawner:GetDescendants()) do
+        if obj:IsA("TextLabel") and obj.Text == "Profile Collection (Auto-Refresh)" then
+            local section = obj.Parent
+            if section and section:IsA("GuiObject") then section.Visible = false end
+            break
+        end
+    end
+
+    -- Remove the Pets/Toys sub-tabs and high-tier button from the visible UI.
+    for _, obj in ipairs(spawner:GetDescendants()) do
+        if obj:IsA("TextButton") then
+            if obj.Text == "Pets" or obj.Text == "Toys" or obj.Text == "Spawn High Tier" then
+                obj.Visible = false
+            end
+        end
+        if obj:IsA("Frame") then
+            if obj.Name == "TextContainer" then
+                -- keep the status/info box
+            end
+        end
+    end
+
+    -- Hide the original sub-tab container by its child button names.
+    for _, obj in ipairs(spawner:GetChildren()) do
+        if obj:IsA("Frame") then
+            local hasPetsTab = false
+            for _, child in ipairs(obj:GetChildren()) do
+                if child:IsA("TextButton") and (child.Text == "Pets" or child.Text == "Toys") then
+                    hasPetsTab = true
                     break
                 end
             end
-            if spawnButton then break end
-            task.wait(0.1)
+            if hasPetsTab then obj.Visible = false end
         end
     end
 
-    -- Compact landscape shell.
-    main.Size = UDim2.fromOffset(430, 278)
-    main.Position = UDim2.new(0.5, -215, 0.5, -139)
-    main.BackgroundColor3 = THEME.panel
-    main.BorderSizePixel = 0
-    main.ClipsDescendants = true
-    main.Active = true
-
-    if UI.mainCorner then
-        UI.mainCorner.CornerRadius = UDim.new(0, 10)
+    -- Keep the actual original Spawn Pet button. No replacement backend is used.
+    if spawnButton then
+        spawnButton.Visible = true
     end
-    if UI.mainStroke then
-        UI.mainStroke.Color = THEME.accent
-        UI.mainStroke.Thickness = 1.2
-        UI.mainStroke.Transparency = 0.15
-    end
-
-    -- Decorative top bar.
-    local topBar = main:FindFirstChild('SHXDRAG_TopBar')
-    if not topBar then
-        topBar = Instance.new('Frame')
-        topBar.Name = 'SHXDRAG_TopBar'
-        topBar.Size = UDim2.new(1, 0, 0, 34)
-        topBar.Position = UDim2.new(0, 0, 0, 0)
-        topBar.BackgroundColor3 = THEME.topbar
-        topBar.BorderSizePixel = 0
-        topBar.ZIndex = 2
-        topBar.Parent = main
-
-        local topCorner = Instance.new('UICorner')
-        topCorner.CornerRadius = UDim.new(0, 10)
-        topCorner.Parent = topBar
-
-        local fill = Instance.new('Frame')
-        fill.Name = 'BottomFill'
-        fill.Size = UDim2.new(1, 0, 0, 10)
-        fill.Position = UDim2.new(0, 0, 1, -10)
-        fill.BackgroundColor3 = THEME.topbar
-        fill.BorderSizePixel = 0
-        fill.Parent = topBar
-
-        local accentLine = Instance.new('Frame')
-        accentLine.Name = 'AccentLine'
-        accentLine.Size = UDim2.new(1, -20, 0, 2)
-        accentLine.Position = UDim2.new(0, 10, 1, -2)
-        accentLine.BackgroundColor3 = THEME.accent
-        accentLine.BorderSizePixel = 0
-        accentLine.Parent = topBar
-
-        local brand = Instance.new('TextLabel')
-        brand.Name = 'Brand'
-        brand.Size = UDim2.new(1, -100, 1, 0)
-        brand.Position = UDim2.new(0, 12, 0, 0)
-        brand.BackgroundTransparency = 1
-        brand.Text = 'PET SPAWNER'
-        brand.Font = Enum.Font.GothamBold
-        brand.TextSize = 14
-        brand.TextColor3 = THEME.text
-        brand.TextXAlignment = Enum.TextXAlignment.Left
-        brand.Parent = topBar
-
-        local badge = Instance.new('TextLabel')
-        badge.Name = 'Badge'
-        badge.Size = UDim2.fromOffset(72, 18)
-        badge.Position = UDim2.new(1, -84, 0.5, -9)
-        badge.BackgroundColor3 = THEME.surface
-        badge.Text = 'LANDSCAPE'
-        badge.Font = Enum.Font.GothamBold
-        badge.TextSize = 8
-        badge.TextColor3 = THEME.muted
-        badge.Parent = topBar
-        Instance.new('UICorner', badge).CornerRadius = UDim.new(0, 6)
-        local badgeStroke = Instance.new('UIStroke')
-        badgeStroke.Color = THEME.stroke
-        badgeStroke.Thickness = 1
-        badgeStroke.Parent = badge
-    else
-        topBar.BackgroundColor3 = THEME.topbar
-    end
-
-    -- Keep the original title hidden behind the polished header.
-    if UI.titleLabel then
-        UI.titleLabel.Visible = false
-    end
-    if UI.titleStroke then
-        UI.titleStroke.Enabled = false
-    end
-    if UI.dragHandle then
-        UI.dragHandle.Size = UDim2.new(1, 0, 0, 34)
-        UI.dragHandle.ZIndex = 10
-    end
-
-    -- Give the tab bar a clean horizontal layout when tabs are enabled.
-    if UI.tabContainer then
-        UI.tabContainer.Size = UDim2.new(1, -18, 0, 26)
-        UI.tabContainer.Position = UDim2.new(0, 9, 0, 40)
-        UI.tabContainer.ZIndex = 3
-    end
-
-    -- Keep the existing compact spawner behavior: show only the real Spawner frame.
-    if UIState and UIState.tabFrames then
-        for name, frame in pairs(UIState.tabFrames) do
-            frame.Visible = (name == 'Spawner')
-        end
-    end
-    if UI.tabContainer then
-        UI.tabContainer.Visible = false
-    end
-
-    -- Theme all existing controls without changing their callbacks.
-    for _, obj in ipairs(main:GetDescendants()) do
-        pcall(function()
-            if obj:IsA('TextButton') then
-                if obj.Name ~= 'dragHandle' and obj.Parent ~= topBar then
-                    obj.BackgroundColor3 = THEME.surface
-                    obj.BackgroundTransparency = 0.02
-                    obj.TextColor3 = THEME.text
-                    local corner = obj:FindFirstChildOfClass('UICorner')
-                    if corner then corner.CornerRadius = UDim.new(0, 6) end
-                end
-            elseif obj:IsA('TextBox') then
-                obj.BackgroundColor3 = THEME.surface
-                obj.BackgroundTransparency = 0.02
-                obj.TextColor3 = THEME.text
-                obj.PlaceholderColor3 = THEME.muted
-                local corner = obj:FindFirstChildOfClass('UICorner')
-                if corner then corner.CornerRadius = UDim.new(0, 6) end
-            elseif obj:IsA('TextLabel') then
-                if obj ~= UI.titleLabel and obj.Parent ~= topBar then
-                    obj.TextColor3 = (obj.TextSize <= 10) and THEME.muted or THEME.text
-                end
-            elseif obj:IsA('ScrollingFrame') then
-                obj.ScrollBarThickness = 3
-                obj.ScrollBarImageColor3 = THEME.accentSoft
-                obj.ScrollBarImageTransparency = 0.2
-                obj.BackgroundTransparency = 1
-            elseif obj:IsA('UIStroke') then
-                if obj.Parent ~= main and obj.Parent ~= topBar then
-                    obj.Color = THEME.stroke
-                    obj.Thickness = math.min(math.max(obj.Thickness, 0.7), 1.1)
-                    obj.Transparency = math.min(obj.Transparency, 0.35)
-                end
-            elseif obj:IsA('UICorner') then
-                obj.CornerRadius = UDim.new(0, 6)
-            end
-        end)
-    end
-
-    -- Re-apply active tab styling after the broad theme pass.
-    for name, data in pairs(UIState.tabButtons or {}) do
-        if data and data.button and data.button.Parent then
-            local active = (UIState.currentTab == name)
-            data.button.BackgroundColor3 = active and Color3.fromRGB(39, 52, 79) or THEME.surface
-            data.button.BackgroundTransparency = 0
-            data.button.TextColor3 = active and THEME.text or THEME.muted
-            if data.stroke then
-                data.stroke.Color = active and THEME.accent or THEME.stroke
-                data.stroke.Thickness = active and 1.2 or 0.8
-                data.stroke.Transparency = 0.2
-            end
-        end
-    end
-
-    -- Final spawner layout: slightly taller content area with safe scrolling.
-    if spawner then
-        spawner.Size = UDim2.new(1, -18, 0, 232)
-        spawner.Position = UDim2.fromOffset(9, 39)
-        spawner.CanvasSize = UDim2.new(0, 0, 0, 760)
-        spawner.ScrollBarThickness = 3
-
-        -- The compact spawner remains the active view, but its controls are visually consistent.
-        for _, obj in ipairs(spawner:GetDescendants()) do
-            pcall(function()
-                if obj:IsA('TextButton') then
-                    obj.TextSize = math.clamp(obj.TextSize, 9, 12)
-                    obj.AutoButtonColor = true
-                elseif obj:IsA('TextLabel') or obj:IsA('TextBox') then
-                    obj.TextSize = math.clamp(obj.TextSize, 9, 12)
-                end
-            end)
-        end
-    end
-
-    gui.DisplayOrder = 9999
-    gui.Enabled = true
 end)
-
